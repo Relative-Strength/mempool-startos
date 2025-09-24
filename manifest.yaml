@@ -74,9 +74,15 @@ dependencies:
   electrs:
     version: ">=0.9.6 <0.12.0"
     requirement:
-      type: "opt-out"
-      how: Set Enable Electrs to Disabled in the config
-    description: Used to provide an index for address lookups
+      type: "opt-in"
+      how: Select Electrs in Address Indexer
+    description: Small but Slower Electrum indexer
+  fulcrum:
+    version: ">=0.0.0"
+    requirement:
+      type: "opt-in"
+      how: Select Fulcrum in Address Indexer
+    description: Super Fast Electrum indexer
   lnd:
     version: ">=0.14.3 <0.21.0"
     description: Used to communicate with the Lightning Network.
