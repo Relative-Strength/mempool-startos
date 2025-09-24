@@ -53,10 +53,25 @@ export const getConfig: T.ExpectedExports.getConfig = compat.getConfig({
       "cln": {},
     }
   },
-  "enable-electrs": {
-    "name": "Enable Electrs Address Lookups",
-    "description": "Enables address lookups via an internal electrs instance",
-    "type": "boolean",
-    "default": true,
+  "indexer": {
+    "type": "union",
+    "name": "Address Indexer",
+    "description": "Choose an Electrum-compatible indexer for address lookups",
+    "tag": {
+      "id": "type",
+      "name": "Indexer",
+      "description": "Select Electrs or Fulcrum running on StartOS",
+      "variant-names": {
+        "electrs": "Electrs (internal)",
+        "fulcrum": "Fulcrum (internal)",
+        "none": "Disabled"
+      }
+    },
+    "default": "none",
+    "variants": {
+      "electrs": {},
+      "fulcrum": {},
+      "none": {}
+    }
   }
 });
