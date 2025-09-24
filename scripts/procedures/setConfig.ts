@@ -1,28 +1,51 @@
 import { compat, types as T } from "../deps.ts";
 
-// Define a custom type for T.Config to include the 'lightning' property with a 'type' property
+// Extend the config type with the fields we use from getConfig
 interface CustomConfig extends T.Config {
   lightning?: {
-    type?: string;
+    type?: "none" | "lnd" | "cln";
   };
+  indexer?: {
+    type?: "electrs" | "fulcrum" | "none";
+  };
+  // Legacy support (pre-migration): old boolean flag
+  "enable-electrs"?: boolean;
 }
+
 // deno-lint-ignore require-await
 export const setConfig: T.ExpectedExports.setConfig = async (
   effects: T.Effects,
   newConfig: CustomConfig
 ) => {
-  const dependsOnElectrs: { [key: string]: string[] } = newConfig?.[
-    "enable-electrs"
-  ]
-    ? { electrs: ["synced"] }
-    : {};
+  // Backward-compat shim:
+  // If someone still has a saved config with "enable-electrs",
+  // treat true => electrs, false/undefined => none,
+  // unless the new union is present (which takes precedence).
+  const legacyEnableElectrs = newConfig?.["enable-electrs"];
+  const indexerType: "electrs" | "fulcrum" | "none" =
+    newConfig?.indexer?.type ??
+    (legacyEnableElectrs === true ? "electrs" : "none");
 
-  // add two const depsLnd and depsCln for the new lightning type string in getConfig
-  const depsLnd: { [key: string]: string[] } = newConfig?.lightning?.type === "lnd"  ? {lnd: []} : {};
-  const depsCln: { [key: string]: string[] } = newConfig?.lightning?.type === "cln"  ? {"c-lightning": []} : {};
-    
+  // Declare dependency based on selected indexer
+  // - electrs: we require it to be "synced" (matches your existing behavior)
+  // - fulcrum: we require it to be running; if the Fulcrum package exposes a
+  //            specific state like "synced" or "ready", replace [] accordingly.
+  const depsIndexer: { [key: string]: string[] } =
+    indexerType === "electrs"
+      ? { electrs: ["synced"] }
+      : indexerType === "fulcrum"
+      ? { fulcrum: [] }
+      : {};
+
+  // Lightning dependencies remain the same
+  const depsLnd: { [key: string]: string[] } =
+    newConfig?.lightning?.type === "lnd" ? { lnd: [] } : {};
+
+  const depsCln: { [key: string]: string[] } =
+    newConfig?.lightning?.type === "cln" ? { "c-lightning": [] } : {};
+
   return compat.setConfig(effects, newConfig, {
-    ...dependsOnElectrs,
+    ...depsIndexer,
     ...depsLnd,
     ...depsCln,
   });
