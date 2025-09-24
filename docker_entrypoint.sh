@@ -65,13 +65,34 @@ elif [ "$(yq e ".lightning.type" /root/start9/config.yaml)" = "cln" ]; then
 	echo "Running on Core Lightning..."
 fi
 
-if [ "$(yq e ".enable-electrs" /root/start9/config.yaml)" = "true" ]; then
-	sed -i 's/ELECTRUM_HOST:=127.0.0.1/ELECTRUM_HOST:=electrs.embassy/' start.sh
-	sed -i 's/ELECTRUM_PORT:=50002/ELECTRUM_PORT:=50001/' start.sh
+# Address indexer selection: electrs | fulcrum | none
+INDEXER_TYPE=$(yq e ".indexer.type" /root/start9/config.yaml)
+
+if [ "$INDEXER_TYPE" = "electrs" ]; then
+    # Electrs uses plaintext port 50001 by default
+    sed -i 's/ELECTRUM_HOST:=127.0.0.1/ELECTRUM_HOST:=electrs.embassy/' start.sh
+    # Ensure port is 50001 (not TLS)
+    sed -i 's/ELECTRUM_PORT:=50002/ELECTRUM_PORT:=50001/' start.sh
+    sed -i 's/ELECTRUM_PORT:=50001/ELECTRUM_PORT:=50001/' start.sh
+elif [ "$INDEXER_TYPE" = "fulcrum" ]; then
+    # Fulcrum speaks Electrum over TLS on 50002
+    sed -i 's/ELECTRUM_HOST:=127.0.0.1/ELECTRUM_HOST:=fulcrum.embassy/' start.sh
+    # Ensure port is 50002 (TLS)
+    sed -i 's/ELECTRUM_PORT:=50001/ELECTRUM_PORT:=50002/' start.sh
+    sed -i 's/ELECTRUM_PORT:=50002/ELECTRUM_PORT:=50002/' start.sh
+elif [ "$INDEXER_TYPE" = "none" ]; then
+    # Disable indexer: backend set to none
+    sed -i '/^node \/backend\/dist\/index.js/i jq \x27.MEMPOOL.BACKEND="none"\x27 \/backend\/mempool-config.json > \/backend\/mempool-config.json.tmp && mv \/backend\/mempool-config.json.tmp \/backend\/mempool-config.json' start.sh
+    sed -i 's/MEMPOOL_BACKEND:=electrum/MEMPOOL_BACKEND:=none/' start.sh
 else
-	# configure mempool to use just a bitcoind backend
-	sed -i '/^node \/backend\/dist\/index.js/i jq \x27.MEMPOOL.BACKEND="none"\x27 \/backend\/mempool-config.json > \/backend\/mempool-config.json.tmp && mv \/backend\/mempool-config.json.tmp \/backend\/mempool-config.json' start.sh
-	sed -i 's/MEMPOOL_BACKEND:=electrum/MEMPOOL_BACKEND:=none/' start.sh
+    # Legacy fallback: support old boolean until migration has run everywhere
+    if [ "$(yq e ".enable-electrs" /root/start9/config.yaml)" = "true" ]; then
+        sed -i 's/ELECTRUM_HOST:=127.0.0.1/ELECTRUM_HOST:=electrs.embassy/' start.sh
+        sed -i 's/ELECTRUM_PORT:=50002/ELECTRUM_PORT:=50001/' start.sh
+    else
+        sed -i '/^node \/backend\/dist\/index.js/i jq \x27.MEMPOOL.BACKEND="none"\x27 \/backend\/mempool-config.json > \/backend\/mempool-config.json.tmp && mv \/backend\/mempool-config.json.tmp \/backend\/mempool-config.json' start.sh
+        sed -i 's/MEMPOOL_BACKEND:=electrum/MEMPOOL_BACKEND:=none/' start.sh
+    fi
 fi
 
 # DATABASE SETUP
