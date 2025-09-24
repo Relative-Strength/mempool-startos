@@ -20,9 +20,13 @@ The Mining tab provides network information about bitcoin mining statistics and 
 
 ## Address Lookups
 
-To enable address lookups, toggle on the "Enable Electrs Address Lookups" option in the configuration menu.
+To enable address lookups, open the configuration menu and set Address Indexer to your preferred option:
 
-You will need electrs to be installed and synced before this feature will work. Also, lookups may be slow or time out altogether while the service is still warming up, or if there are too many other things running on your system.
+- Electrs: Small and good for light use.
+- Fulcrum: Much faster thane Electrs, especially for addresses with many transactions. Uses slightly more storage than Electrs.
+- Disabled: Turns off address lookups.
+
+You will need the selected indexer to be installed and fully synced before this feature will work. Also, lookups may be slow or time out while the service is still warming up, or if your system is under heavy load. If address lookups aren’t working, try restarting the selected indexer and try the lookup again.
 
 ## Acceleration
 
