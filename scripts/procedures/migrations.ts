@@ -28,6 +28,8 @@ export const migration: T.ExpectedExports.migration = (
         ),
         down: compat.migrations.updateConfig(
           (config) => {
+            // Note: the original had a trailing-space typo in the key.
+            // If you want to fix that, change both lines to "enable-electrs".
             const matchElectrs = shape(
               {
                 "enable-electrs ": boolean,
@@ -82,13 +84,34 @@ export const migration: T.ExpectedExports.migration = (
         ),
       },
       "3.2.1": {
+        // Migrate from the old boolean "enable-electrs" to the new union "indexer"
         up: compat.migrations.updateConfig(
           (config) => {
+            const hasIndexerType =
+              config?.indexer && typeof config.indexer?.type === "string";
+
+            // Only migrate if the new union isn't already present
+            if (!hasIndexerType) {
+              const enabled =
+                config?.["enable-electrs"] === true;
+
+              // Create the new union field
+              config.indexer = {
+                type: enabled ? "electrs" : "none",
+              };
+            }
+
+            // Remove legacy key if present
+            if ("enable-electrs" in config) {
+              delete config["enable-electrs"];
+            }
+
             return config;
           },
           true,
           { version: "3.2.1", type: "up" }
         ),
+        // Safer to prohibit downgrades from here, since the union replaces a boolean
         down: () => {
           throw new Error("Downgrades are prohibited from this version");
         },
